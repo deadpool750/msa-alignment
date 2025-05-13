@@ -80,89 +80,68 @@ def traceback_needleman(matrix, match_score, mismatch_penalty, gap_penalty):
     return path_list, path_coordinates
 
 def generate_array(strand1, strand2, match_value, mismatch_value, gap_value):
-    """
-    Generates the Needleman-Wunsch alignment matrix based on the input strands and scoring values.
-    """
-
-    #creating appropriate length and width for the matrix taking into account the space for gap penalties and 0 values
-    row_length = len(strand1) + 2
-    column_length = len(strand2) + 2
-
-    #validating the strand nucleotides
     bases = {'A', 'C', 'G', 'T', 'U'}
-    if not set(strand1).issubset(bases) or not set(strand2).issubset(bases):
+    if not set(strand1.upper()).issubset(bases) or not set(strand2.upper()).issubset(bases):
         print("Invalid bases detected!")
         return None
 
-    #creating the array originally all with zeros
-    matrix = np.zeros((row_length, column_length), dtype='object')
+    strand1 = strand1.upper()
+    strand2 = strand2.upper()
 
-    #placing the two strands into the matrix
-    matrix[0, 2:2 + len(strand2)] = list(strand2)
-    matrix[2:2 + len(strand1), 0] = list(strand1)
+    rows = len(strand1) + 1
+    cols = len(strand2) + 1
+    matrix = np.zeros((rows, cols), dtype=int)
 
-    #placing the zero manually as it will be always in the same place
-    matrix[1, 1] = 0
+    for i in range(1, rows):
+        matrix[i][0] = matrix[i - 1][0] + gap_value
+    for j in range(1, cols):
+        matrix[0][j] = matrix[0][j - 1] + gap_value
 
-    #placing the gap values in every cell of the 0th row
-    n = gap_value
-    for i in range(2, row_length):
-        matrix[i, 1] = n
-        n += gap_value
-
-    #placing the gap values in every cell of the 0th column
-    n = gap_value
-    for i in range(2, column_length):
-        matrix[1, i] = n
-        n += gap_value
-
-    #filling in the values using previously created maxvalue_needleman function
-    for i in range(2, row_length):
-        for j in range(2, column_length):
-            maxvalue_needleman(matrix, i, j, match_value, mismatch_value, gap_value)
+    for i in range(1, rows):
+        for j in range(1, cols):
+            if strand1[i - 1] == strand2[j - 1]:
+                diagonal = matrix[i - 1][j - 1] + match_value
+            else:
+                diagonal = matrix[i - 1][j - 1] + mismatch_value
+            up = matrix[i - 1][j] + gap_value
+            left = matrix[i][j - 1] + gap_value
+            matrix[i][j] = max(diagonal, up, left)
 
     return matrix
 
 def analyze_alignment(matrix, match_score, mismatch_penalty, gap_penalty, strand1, strand2):
-    #initializing lists to store the aligned sequences
     aligned1 = []
     aligned2 = []
+    i = len(strand1)
+    j = len(strand2)
 
-    #setting starting positions at the bottom-right of the matrix
-    i = len(strand1) + 1
-    j = len(strand2) + 1
-
-    #tracing back through the matrix until reaching the top-left corner
-    while i > 1 or j > 1:
-        #checking for a diagonal move (match or mismatch)
-        if i > 1 and j > 1:
-            match = match_score if strand1[i - 2] == strand2[j - 2] else mismatch_penalty
-            if matrix[i][j] == matrix[i - 1][j - 1] + match:
-                aligned1.append(strand1[i - 2])
-                aligned2.append(strand2[j - 2])
+    while i > 0 or j > 0:
+        if i > 0 and j > 0:
+            c1 = strand1[i - 1]
+            c2 = strand2[j - 1]
+            match = match_score if c1 == c2 else mismatch_penalty
+            diag = matrix[i - 1][j - 1]
+            if matrix[i][j] == diag + match:
+                aligned1.append(c1)
+                aligned2.append(c2)
                 i -= 1
                 j -= 1
                 continue
 
-        #checking for a move from the top (gap in strand2)
-        if i > 1 and matrix[i][j] == matrix[i - 1][j] + gap_penalty:
-            aligned1.append(strand1[i - 2])
-            aligned2.append("-")
+        if i > 0 and matrix[i][j] == matrix[i - 1][j] + gap_penalty:
+            aligned1.append(strand1[i - 1])
+            aligned2.append('-')
             i -= 1
             continue
 
-        #checking for a move from the left (gap in strand1)
-        if j > 1 and matrix[i][j] == matrix[i][j - 1] + gap_penalty:
-            aligned1.append("-")
-            aligned2.append(strand2[j - 2])
+        if j > 0 and matrix[i][j] == matrix[i][j - 1] + gap_penalty:
+            aligned1.append('-')
+            aligned2.append(strand2[j - 1])
             j -= 1
-            continue
 
-    #reversing the sequences to get the final alignment
     aligned1.reverse()
     aligned2.reverse()
 
-    #returning the aligned sequences
     return aligned1, aligned2
 
 
