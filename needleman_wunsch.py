@@ -80,47 +80,72 @@ def traceback_needleman(matrix, match_score, mismatch_penalty, gap_penalty):
     return path_list, path_coordinates
 
 def generate_array(strand1, strand2, match_value, mismatch_value, gap_value):
+    #validate that both input sequences contain only valid nucleotide bases
     bases = {'A', 'C', 'G', 'T', 'U'}
     if not set(strand1.upper()).issubset(bases) or not set(strand2.upper()).issubset(bases):
+        #if an invalid base is found, print an error and return None
         print("Invalid bases detected!")
         return None
 
+    #convert both sequences to uppercase to ensure consistency
     strand1 = strand1.upper()
     strand2 = strand2.upper()
 
+    #define the number of rows and columns in the alignment matrix
     rows = len(strand1) + 1
     cols = len(strand2) + 1
+
+    #initialize the alignment matrix with zeros (numeric values only)
     matrix = np.zeros((rows, cols), dtype=int)
 
+    #fill the first column with cumulative gap penalties
     for i in range(1, rows):
         matrix[i][0] = matrix[i - 1][0] + gap_value
+
+    #fill the first row with cumulative gap penalties
     for j in range(1, cols):
         matrix[0][j] = matrix[0][j - 1] + gap_value
 
+    #fill the rest of the matrix using dynamic programming rules
     for i in range(1, rows):
         for j in range(1, cols):
+            #check for a match or mismatch and compute the diagonal score
             if strand1[i - 1] == strand2[j - 1]:
                 diagonal = matrix[i - 1][j - 1] + match_value
             else:
                 diagonal = matrix[i - 1][j - 1] + mismatch_value
+
+            #calculate the score if a gap is introduced in strand2 (move up)
             up = matrix[i - 1][j] + gap_value
+
+            #calculate the score if a gap is introduced in strand1 (move left)
             left = matrix[i][j - 1] + gap_value
+
+            #choose the highest score from diagonal, up, or left for optimal alignment
             matrix[i][j] = max(diagonal, up, left)
 
+    #return the completed alignment matrix
     return matrix
 
 def analyze_alignment(matrix, match_score, mismatch_penalty, gap_penalty, strand1, strand2):
+    #initialize lists to store the aligned sequences
     aligned1 = []
     aligned2 = []
+
+    #start from the bottom-right cell of the matrix
     i = len(strand1)
     j = len(strand2)
 
+    #trace back through the matrix until reaching the top-left corner
     while i > 0 or j > 0:
+        #check for a diagonal move (match or mismatch)
         if i > 0 and j > 0:
             c1 = strand1[i - 1]
             c2 = strand2[j - 1]
             match = match_score if c1 == c2 else mismatch_penalty
             diag = matrix[i - 1][j - 1]
+
+            #if the current cell equals the diagonal cell + match/mismatch, move diagonally
             if matrix[i][j] == diag + match:
                 aligned1.append(c1)
                 aligned2.append(c2)
@@ -128,38 +153,24 @@ def analyze_alignment(matrix, match_score, mismatch_penalty, gap_penalty, strand
                 j -= 1
                 continue
 
+        #check for a vertical move (gap in strand2)
         if i > 0 and matrix[i][j] == matrix[i - 1][j] + gap_penalty:
             aligned1.append(strand1[i - 1])
             aligned2.append('-')
             i -= 1
             continue
 
+        #check for a horizontal move (gap in strand1)
         if j > 0 and matrix[i][j] == matrix[i][j - 1] + gap_penalty:
             aligned1.append('-')
             aligned2.append(strand2[j - 1])
             j -= 1
 
+    #reverse the aligned sequences to correct the order
     aligned1.reverse()
     aligned2.reverse()
 
+    #return the aligned sequences
     return aligned1, aligned2
 
 
-#need adjustments
-def save_alignment_to_file(filename, aligned1, aligned2, match, mismatch, gap, alignment_length, match_count, gap_count, identity_percentage):
-    """
-    saves all relevant alignment results to a text file
-    """
-
-    #structure how it should be saved into a .txt file
-    with open(filename, "w") as f:
-        f.write("Needleman-Wunsch Alignment Result\n")
-        f.write("===============================\n\n")
-        f.write("Aligned Sequences:\n")
-        f.write("Strand 1: " + ''.join(aligned1) + "\n")
-        f.write("Strand 2: " + ''.join(aligned2) + "\n\n")
-        f.write(f"Scoring:\n  Match = {match}, Mismatch = {mismatch}, Gap = {gap}\n\n")
-        f.write(f"Alignment Length: {alignment_length}\n")
-        f.write(f"Number of Matches: {match_count}\n")
-        f.write(f"Number of Gaps: {gap_count}\n")
-        f.write(f"Identity Percentage: {identity_percentage}%\n")
