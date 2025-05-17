@@ -79,55 +79,63 @@ def traceback_needleman(matrix, match_score, mismatch_penalty, gap_penalty):
     #coordinates given in the
     return path_list, path_coordinates
 
+import numpy as np
+
 def generate_array(strand1, strand2, match_value, mismatch_value, gap_value):
-    #validate that both input sequences contain only valid nucleotide bases
+    """
+    Generates the Needleman-Wunsch alignment matrix (numeric only)
+    based on input strands and scoring values.
+    Includes debug output for invalid characters.
+    """
+
+    #clean up sequences: uppercase and remove non-letter characters
+    strand1 = ''.join(filter(str.isalpha, strand1.upper()))
+    strand2 = ''.join(filter(str.isalpha, strand2.upper()))
+
+    #allowed nucleotide bases
     bases = {'A', 'C', 'G', 'T', 'U'}
-    if not set(strand1.upper()).issubset(bases) or not set(strand2.upper()).issubset(bases):
-        #if an invalid base is found, print an error and return None
+
+    #check for invalid bases
+    invalid1 = set(strand1) - bases
+    invalid2 = set(strand2) - bases
+
+    if invalid1 or invalid2:
+        if invalid1:
+            print(f"[ERROR] Invalid characters in Strand 1: {invalid1}")
+        if invalid2:
+            print(f"[ERROR] Invalid characters in Strand 2: {invalid2}")
         print("Invalid bases detected!")
         return None
 
-    #convert both sequences to uppercase to ensure consistency
-    strand1 = strand1.upper()
-    strand2 = strand2.upper()
-
-    #define the number of rows and columns in the alignment matrix
+    #initialize the alignment matrix
     rows = len(strand1) + 1
     cols = len(strand2) + 1
-
-    #initialize the alignment matrix with zeros (numeric values only)
     matrix = np.zeros((rows, cols), dtype=int)
 
-    #fill the first column with cumulative gap penalties
+    #initialize first row and first column with gap penalties
     for i in range(1, rows):
         matrix[i][0] = matrix[i - 1][0] + gap_value
-
-    #fill the first row with cumulative gap penalties
     for j in range(1, cols):
         matrix[0][j] = matrix[0][j - 1] + gap_value
 
-    #fill the rest of the matrix using dynamic programming rules
+    #fill the matrix based on dynamic programming rules
     for i in range(1, rows):
         for j in range(1, cols):
-            #check for a match or mismatch and compute the diagonal score
             if strand1[i - 1] == strand2[j - 1]:
                 diagonal = matrix[i - 1][j - 1] + match_value
             else:
                 diagonal = matrix[i - 1][j - 1] + mismatch_value
-
-            #calculate the score if a gap is introduced in strand2 (move up)
             up = matrix[i - 1][j] + gap_value
-
-            #calculate the score if a gap is introduced in strand1 (move left)
             left = matrix[i][j - 1] + gap_value
-
-            #choose the highest score from diagonal, up, or left for optimal alignment
             matrix[i][j] = max(diagonal, up, left)
 
-    #return the completed alignment matrix
     return matrix
 
 def analyze_alignment(matrix, match_score, mismatch_penalty, gap_penalty, strand1, strand2):
+    #ensure sequences are clean (strip non-letters and uppercase)
+    strand1 = ''.join(filter(str.isalpha, strand1.upper()))
+    strand2 = ''.join(filter(str.isalpha, strand2.upper()))
+
     #initialize lists to store the aligned sequences
     aligned1 = []
     aligned2 = []

@@ -118,12 +118,16 @@ def compute_alignment_stats(aligned_sequences):
     """
     Computes alignment statistics across all aligned sequences:
     number of matches, mismatches, gaps, and identity percentage.
+    Automatically normalizes sequence lengths by padding with gaps.
     """
-    #computes match/mismatch/gap stats and identity percentage
+    #normalize sequence lengths by padding with '-' to equal length
+    max_len = max(len(seq) for seq in aligned_sequences)
+    aligned_sequences = [seq.ljust(max_len, '-') for seq in aligned_sequences]
+
     match_count = 0
     mismatch_count = 0
     gap_count = 0
-    total_cols = len(aligned_sequences[0])
+    total_cols = max_len
     num_seqs = len(aligned_sequences)
 
     for i in range(total_cols):
